@@ -1,10 +1,103 @@
 # SDM Pro HRIS
 
-Dashboard manajemen SDM (HRIS) dengan **frontend React + Vite + Tailwind CSS v4** dan
-**backend PHP Native + SQLite (PDO)**, siap dijalankan lewat **Laragon**.
+Aplikasi manajemen SDM (**HRIS**) full-stack untuk mengelola karyawan, departemen, jabatan,
+absensi, dan cuti — lengkap dengan dashboard analitik dan export laporan Excel.
 
-Seluruh data (karyawan, departemen, jabatan, absensi, cuti) disimpan di database SQLite
-dan diakses melalui REST API JSON. Tidak ada lagi data dummy di sisi React.
+**Frontend** React 19 + Vite + Tailwind CSS v4 · **Backend** PHP 8 native + SQLite (PDO)
+
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)
+![PHP](https://img.shields.io/badge/PHP-8.1-777BB4?logo=php&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-3-003B57?logo=sqlite&logoColor=white)
+
+Seluruh data (karyawan, departemen, jabatan, absensi, cuti) disimpan di SQLite dan diakses
+melalui REST API JSON. Tidak ada data dummy di sisi React — semua angka di dashboard dihitung
+dari database.
+
+![Dashboard SDM Pro HRIS](docs/screenshots/02-dashboard.png)
+
+## Daftar Isi
+
+- [Fitur Utama](#fitur-utama)
+- [Tech Stack](#tech-stack)
+- [Arsitektur](#arsitektur)
+- [Tampilan Aplikasi](#tampilan-aplikasi)
+- [1. Cara Menjalankan](#1-cara-menjalankan)
+- [2. Struktur Folder](#2-struktur-folder)
+- [3. Database](#3-database)
+- [4. Daftar Endpoint](#4-daftar-endpoint)
+- [5. Detail Fitur Frontend](#5-detail-fitur-frontend)
+- [6. Cara Menguji](#6-cara-menguji)
+- [7. Catatan Keamanan](#7-catatan-keamanan)
+- [8. Perintah npm](#8-perintah-npm)
+- [Limitasi & Rencana Pengembangan](#limitasi--rencana-pengembangan)
+
+---
+
+## Fitur Utama
+
+- **Autentikasi & sesi** — login/logout dengan session PHP, password di-hash `password_hash()`.
+- **Dashboard analitik** — kartu statistik, bar chart kehadiran mingguan, pie chart distribusi
+  departemen, dan tabel aktivitas terkini; semuanya dihitung dari SQLite.
+- **Manajemen karyawan** — CRUD lengkap, pencarian & filter **server-side** (departemen,
+  jabatan, status) dengan debounce.
+- **Departemen & jabatan** — CRUD dengan relasi foreign key dan validasi level jabatan.
+- **Absensi** — clock-in/clock-out, rekap kehadiran per karyawan, filter tanggal/status,
+  serta tambah/edit/hapus entri.
+- **Cuti & izin** — pengajuan cuti, alur persetujuan (setujui/tolak), dan riwayat.
+- **Export laporan** — unduh rekap absensi ke **XLSX** dengan filter jabatan.
+- **UX lengkap** — loading state, empty state, toast, modal konfirmasi, error banner
+  dengan tombol "Coba lagi", dan layout responsif (desktop & mobile).
+- **API yang konsisten** — envelope JSON seragam, validasi terpusat, dan pemetaan error
+  database ke HTTP status (`409` konflik, `422` validasi, `404`, `405`, `401`).
+
+## Tech Stack
+
+| Layer          | Teknologi                                                        |
+| -------------- | ---------------------------------------------------------------- |
+| Frontend       | React 19, Vite 8, Tailwind CSS v4, Lucide Icons, Recharts         |
+| Backend        | PHP 8.1 native (tanpa framework), PDO                              |
+| Database       | SQLite 3 (file-based, di luar web root)                            |
+| Export         | SheetJS (`xlsx`)                                                   |
+| Dev environment| Laragon (Apache + PHP)                                             |
+
+## Arsitektur
+
+```
+Browser (React 19 SPA)
+        │  fetch JSON  /api/*.php
+        ▼
+Apache + PHP 8 (api/)
+        │  PDO prepared statements
+        ▼
+SQLite  storage/rdbms/employee_management.db
+        ▲
+        └── schema.php (CREATE IF NOT EXISTS) + seed.php (hanya saat kosong)
+```
+
+- Frontend memakai satu `fetch` wrapper (`frontend/src/api/client.js`) dengan `ApiError`
+  dan penanganan sesi kedaluwarsa.
+- Backend memusatkan auth, validasi, dan serialisasi JSON di `api/helpers.php`.
+- Database diinisialisasi otomatis saat request pertama, jadi tidak perlu import SQL manual.
+
+## Tampilan Aplikasi
+
+| Data Karyawan | Absensi & Presensi |
+| --- | --- |
+| ![Data Karyawan](docs/screenshots/03-karyawan.png) | ![Absensi](docs/screenshots/05-absensi.png) |
+
+| Cuti & Izin | Halaman Login |
+| --- | --- |
+| ![Cuti & Izin](docs/screenshots/06-cuti.png) | ![Login](docs/screenshots/01-login.png) |
+
+<p align="center">
+  <img src="docs/screenshots/07-mobile.png" alt="Tampilan mobile" width="280">
+  <br>
+  <sub>Tampilan responsif di layar mobile</sub>
+</p>
+
+> Dokumentasi struktur tabel & relasi lengkap ada di **[docs/ERD.md](docs/ERD.md)**.
 
 ---
 
@@ -76,6 +169,9 @@ rdbms/
 ├── scripts/
 │   ├── publish.mjs              # salin dist/ -> root setelah build
 │   └── api-smoke-test.ps1       # 48 assertion uji API
+├── docs/
+│   ├── ERD.md                   # entity relationship diagram & penjelasan relasi
+│   └── screenshots/             # tangkapan layar untuk dokumentasi
 ├── vite.config.js               # proxy /api -> http://rdbms.test
 ├── package.json
 │
@@ -126,6 +222,8 @@ Perilaku foreign key:
 
 Index tambahan dibuat untuk kolom yang sering difilter: `department_id`, `position_id`,
 `attendances.date`, `attendances.employee_id`, `leave_requests.status`, `leave_requests.employee_id`.
+
+Diagram lengkap: **[docs/ERD.md](docs/ERD.md)**.
 
 ---
 
@@ -211,7 +309,7 @@ Semua endpoint **wajib login** (session PHP) kecuali `auth.php`. Status yang dip
 
 ---
 
-## 5. Fitur Frontend
+## 5. Detail Fitur Frontend
 
 - Login/logout dengan session PHP; state aplikasi dimuat ulang setelah login.
 - Dashboard: kartu statistik, bar chart kehadiran mingguan, pie chart distribusi departemen,
@@ -244,13 +342,13 @@ respons 401/404/405, dan logout.
 # tanpa sesi -> 401
 curl.exe -i "http://rdbms.test/api/auth.php?action=me"
 
-# login -> simpan cookie
-curl.exe -c cookies.txt -X POST -H "Content-Type: application/json" `
-  --data-raw '{\"email\":\"admin.hr@company.id\",\"password\":\"admin123\"}' `
-  "http://rdbms.test/api/auth.php?action=login"
+# login -> simpan cookie di $session
+$body = @{ email = 'admin.hr@company.id'; password = 'admin123' } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri "http://rdbms.test/api/auth.php?action=login" `
+  -ContentType 'application/json' -Body $body -SessionVariable session
 
 # dashboard dengan sesi -> 200
-curl.exe -b cookies.txt "http://rdbms.test/api/dashboard.php"
+Invoke-RestMethod -Uri "http://rdbms.test/api/dashboard.php" -WebSession $session
 ```
 
 ### Uji manual di browser
@@ -284,3 +382,22 @@ curl.exe -b cookies.txt "http://rdbms.test/api/dashboard.php"
 | `npm run build`     | build ke `dist/` lalu publish ke root               |
 | `npm run build:only`| build Vite saja tanpa publish                       |
 | `npm run preview`   | pratinjau hasil build                               |
+
+---
+
+## Limitasi & Rencana Pengembangan
+
+**Limitasi saat ini**
+
+- SQLite bersifat single-writer — cocok untuk skala kecil/menengah, bukan beban tinggi.
+- Otorisasi masih sederhana (satu peran HR Manager); belum ada RBAC granular.
+- Belum ada upload foto/dokumen karyawan.
+- Uji API masih berupa skrip PowerShell, belum terintegrasi CI.
+- Belum ada demo online; aplikasi dijalankan lokal lewat Laragon.
+
+**Rencana**
+
+- Memecah `App.jsx` menjadi komponen & hooks terpisah.
+- Menambah unit/integration test otomatis dan pipeline CI.
+- Menambah peran (HR admin, manager, karyawan) dengan hak akses berbeda.
+- Menyediakan Dockerfile + demo online.
