@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.vite/
+
+# Hasil build (dibuat ulang dengan `npm run build`)
+/index.html
+/assets/

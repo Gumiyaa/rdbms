@@ -1,0 +1,2 @@
+# Cegah listing direktori pada folder API
+Options -Indexes
