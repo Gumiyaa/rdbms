@@ -1,4 +1,4 @@
-import { ApiError } from '../api/client';
+import { ApiError } from '../api/client.js';
 
 /**
  * Ubah error API menjadi teks yang siap ditampilkan.

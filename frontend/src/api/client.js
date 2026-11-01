@@ -7,7 +7,8 @@
  *   './api/' pada hasil build yang disajikan Laragon).
  */
 
-const API_BASE = `${import.meta.env.BASE_URL}api/`;
+const env = import.meta.env ?? {};
+const API_BASE = `${env.BASE_URL ?? '/'}api/`;
 
 export class ApiError extends Error {
   constructor(message, status = 0, errors = null) {
