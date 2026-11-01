@@ -10,6 +10,7 @@ absensi, dan cuti — lengkap dengan dashboard analitik dan export laporan Excel
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)
 ![PHP](https://img.shields.io/badge/PHP-8.1-777BB4?logo=php&logoColor=white)
 ![SQLite](https://img.shields.io/badge/SQLite-3-003B57?logo=sqlite&logoColor=white)
+[![CI](https://github.com/Gumiyaa/rdbms/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Gumiyaa/rdbms/actions/workflows/ci.yml)
 
 Seluruh data (karyawan, departemen, jabatan, absensi, cuti) disimpan di SQLite dan diakses
 melalui REST API JSON. Tidak ada data dummy di sisi React — semua angka di dashboard dihitung
@@ -60,6 +61,7 @@ dari database.
 | Backend        | PHP 8.1 native (tanpa framework), PDO                              |
 | Database       | SQLite 3 (file-based, di luar web root)                            |
 | Export         | SheetJS (`xlsx`)                                                   |
+| Pengujian      | Node.js test runner (`node:test`) + PHP CLI, GitHub Actions        |
 | Dev environment| Laragon (Apache + PHP)                                             |
 
 ## Arsitektur
@@ -178,12 +180,18 @@ rdbms/
 │   ├── dashboard.php
 │   ├── .htaccess                # Options -Indexes
 │   └── config/.htaccess         # blokir akses langsung ke folder config
+├── tests/                       # tes otomatis (tanpa framework tambahan)
+│   ├── harness/                 # resolver PHP, spawn `php -S`, klien cookie
+│   ├── unit/                    # unit test JS + jembatan PHP CLI
+│   ├── api/                     # integration test REST API
+│   └── run-api.mjs              # orkestrator tes API + database sementara
 ├── scripts/
 │   ├── publish.mjs              # salin dist/ -> root setelah build
-│   └── api-smoke-test.ps1       # 48 assertion uji API
+│   └── api-smoke-test.ps1       # smoke test manual (opsional)
 ├── docs/
 │   ├── ERD.md                   # entity relationship diagram & penjelasan relasi
 │   └── screenshots/             # tangkapan layar untuk dokumentasi
+├── .github/workflows/ci.yml     # pipeline build + unit + integration test
 ├── vite.config.js               # proxy /api -> http://rdbms.test
 ├── package.json
 │
@@ -337,16 +345,48 @@ Semua endpoint **wajib login** (session PHP) kecuali `auth.php`. Status yang dip
 
 ## 6. Cara Menguji
 
-### Uji API (48 assertion)
+### Tes otomatis
 
-Pastikan Laragon/Apache berjalan dan database sudah ter-inisialisasi, lalu:
+Pengujian memakai **Node.js built-in test runner** (`node:test`) dan **PHP CLI**, tanpa
+framework tambahan. Ada dua lapis:
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\api-smoke-test.ps1
+| Perintah            | Cakupan |
+| ------------------- | ------- |
+| `npm run test:unit` | fungsi murni `api/helpers.php` (format/parse anggaran, validasi tanggal & jam, mapper) lewat PHP CLI, plus helper frontend (`errorText`, `formatIDR`) |
+| `npm run test:api`  | integration test REST API: auth & sesi, CRUD karyawan/departemen/jabatan/absensi/cuti, filter, rekap, clock-in/out, dashboard, dan keamanan |
+| `npm test`          | menjalankan unit lalu integration test |
+
+Prasyarat: **PHP 8.1+** dengan ekstensi `pdo_sqlite`, `sqlite3`, `mbstring`, dan **Node.js 18+**.
+Binary PHP dicari dari `PHP_BINARY`, lalu `php` di PATH, lalu instalasi Laragon.
+
+```bash
+npm install        # cukup sekali
+npm test
 ```
 
-Skrip menguji login, CRUD semua entitas, filter, rekap, ubah status cuti, validasi input,
-respons 401/404/405, dan logout.
+### Isolasi database
+
+`npm run test:api` **tidak menyentuh database utama**. Orkestrator `tests/run-api.mjs`:
+
+1. membuat folder sementara (`os.tmpdir()/rdbms-api-*`),
+2. membuat database SQLite baru + skema + seed di folder itu (`RDBMS_DB_PATH`),
+3. menjalankan `php -S` dengan database dan `session.save_path` sementara,
+4. menjalankan `tests/api/*.test.mjs` secara berurutan (server PHP single-threaded),
+5. mematikan server dan menghapus folder sementara, termasuk saat tes gagal.
+
+Data yang dibuat tes selalu dihapus di `after()`, dan data seed yang diubah dipulihkan,
+sehingga tes dapat diulang tanpa bergantung pada urutan. Untuk men-debug, folder sementara
+bisa dipertahankan:
+
+```bash
+node tests/run-api.mjs --keep
+```
+
+Pipeline yang sama dijalankan otomatis oleh GitHub Actions (`.github/workflows/ci.yml`)
+pada setiap push/PR ke `main`: build Vite, unit test, dan integration test API.
+
+> Skrip lama `scripts/api-smoke-test.ps1` tetap tersedia sebagai smoke test manual
+> terhadap server Laragon.
 
 ### Uji manual cepat
 
@@ -394,6 +434,9 @@ Invoke-RestMethod -Uri "http://rdbms.test/api/dashboard.php" -WebSession $sessio
 | `npm run build`     | build ke `dist/` lalu publish ke root               |
 | `npm run build:only`| build Vite saja tanpa publish                       |
 | `npm run preview`   | pratinjau hasil build                               |
+| `npm test`          | unit test + integration test API                    |
+| `npm run test:unit` | unit test (Node + PHP CLI)                          |
+| `npm run test:api`  | integration test API dengan database sementara      |
 
 ---
 
@@ -404,11 +447,9 @@ Invoke-RestMethod -Uri "http://rdbms.test/api/dashboard.php" -WebSession $sessio
 - SQLite bersifat single-writer — cocok untuk skala kecil/menengah, bukan beban tinggi.
 - Otorisasi masih sederhana (satu peran HR Manager); belum ada RBAC granular.
 - Belum ada upload foto/dokumen karyawan.
-- Uji API masih berupa skrip PowerShell, belum terintegrasi CI.
 - Belum ada demo online; aplikasi dijalankan lokal lewat Laragon.
 
 **Rencana**
 
-- Menambah unit/integration test otomatis dan pipeline CI.
 - Menambah peran (HR admin, manager, karyawan) dengan hak akses berbeda.
 - Menyediakan Dockerfile + demo online.
