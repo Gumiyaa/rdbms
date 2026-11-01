@@ -149,9 +149,21 @@ rdbms/
 │   ├── index.html
 │   └── src/
 │       ├── main.jsx             # bootstrap React
-│       ├── App.jsx              # seluruh UI + integrasi API
+│       ├── App.jsx              # komposisi layout + state & handler
 │       ├── index.css            # Tailwind + animasi
-│       └── api/client.js        # fetch wrapper (ApiError + objek `api`)
+│       ├── constants.js         # konstanta bersama (akun demo, data kosong)
+│       ├── api/client.js        # fetch wrapper (ApiError + objek `api`)
+│       ├── hooks/
+│       │   ├── useHrData.js     # data layer: loader, filter, ekspor, error
+│       │   └── useToast.js      # notifikasi toast global
+│       ├── utils/format.js      # errorText + format IDR
+│       └── components/
+│           ├── AuthLoading.jsx
+│           ├── LoginPage.jsx
+│           ├── layout/          # Sidebar & Header
+│           ├── pages/           # Dashboard, Karyawan, Departemen, Jabatan, Absensi, Cuti
+│           ├── modals/          # 7 dialog form & konfirmasi
+│           └── ui/              # ErrorBanner, Toast, TableStates, ModalError
 ├── api/                         # backend PHP Native
 │   ├── config/database.php      # koneksi PDO, init skema, seed otomatis
 │   ├── config/schema.php        # definisi tabel & index
@@ -397,7 +409,6 @@ Invoke-RestMethod -Uri "http://rdbms.test/api/dashboard.php" -WebSession $sessio
 
 **Rencana**
 
-- Memecah `App.jsx` menjadi komponen & hooks terpisah.
 - Menambah unit/integration test otomatis dan pipeline CI.
 - Menambah peran (HR admin, manager, karyawan) dengan hak akses berbeda.
 - Menyediakan Dockerfile + demo online.
