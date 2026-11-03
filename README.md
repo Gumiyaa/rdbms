@@ -103,6 +103,9 @@ SQLite  storage/rdbms/employee_management.db
 
 ---
 
+<details>
+<summary><strong>📖 Dokumen Lengkap</strong> — Cara Menjalankan, Struktur Folder, Database, Endpoint, Keamanan & lainnya</summary>
+
 ## 1. Cara Menjalankan
 
 Prasyarat: **PHP 8.1+** dengan ekstensi `pdo_sqlite`, **Apache** (Laragon), dan **Node.js 18+**.
@@ -453,3 +456,5 @@ Invoke-RestMethod -Uri "http://rdbms.test/api/dashboard.php" -WebSession $sessio
 
 - Menambah peran (HR admin, manager, karyawan) dengan hak akses berbeda.
 - Menyediakan Dockerfile + demo online.
+
+</details>
